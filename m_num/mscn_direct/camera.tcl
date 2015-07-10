@@ -471,7 +471,7 @@ proc mobile_node_action {time_stamp} {
         set opt(tracking_index) $index_min
         #puts "Tracking: Sensor $index_min"; # test
         incr opt(effective_monitoring_time) $opt(time_click)
-        foreach i $opt(moving_list) { # Stop other sensors
+        foreach i $opt(moving_list) { ; # Stop other sensors
             if {$i == $index_min} {
                 continue
             }

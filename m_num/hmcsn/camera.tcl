@@ -25,7 +25,7 @@ set opt(nam_file) "out.nam"
 set opt(x)      100                        ;# X dimension of topography
 set opt(y)      100                        ;# Y dimension of topography
 set opt(stop)   100                        ;# time of simulation end
-set opt(nmnode) 20                         ;# number of mobile nodes
+set opt(nmnode) 10                         ;# number of mobile nodes
 set opt(node_size) 1                       ;# Size of nodes
 set opt(target_size) 2                     ;# Size of the target
 set opt(d_fov) 10;                         # Length of Field of View
@@ -40,7 +40,7 @@ set opt(ntarget) 1;                         # number of targets
 set opt(target_theta) "";                    # Direction of target
 set opt(grid) "";               # Coodinates List of Subregions
 set opt(moving_list) "";        # List of moving sensors
-#set opt(tarcking_index) -1;     # Index of Tracking sensor
+set opt(tracking_index) -1;     # Index of Tracking sensor
 set opt(level2_index) -1;       # Index of Level 2 sensor
 set opt(effective_monitoring_time) 0; # Effective Monitoring Time
 set opt(total_moving_distance) 0;
@@ -352,7 +352,7 @@ proc distance_xy {sx sy tx ty} {
     return $dist
 }
 
-# If the target is in Level 1 or 2 subregion
+# If the target or sensor is in Level 1 or 2 subregion
 proc in_subregion {target_ level time_stamp} {
     global opt
     upvar 1 $target_ target
@@ -366,10 +366,35 @@ proc in_subregion {target_ level time_stamp} {
     set t_y [$target set Y_]
     set g_x [lindex [lindex $opt(grid) $level] 0]
     set g_y [lindex [lindex $opt(grid) $level] 1]
-    set right [expr $g_x + $opt(grid_length)/2]
-    set left [expr $g_x - $opt(grid_length)/2]
-    set top [expr $g_y + $opt(grid_length)/2]
-    set bottom [expr $g_y - $opt(grid_length)/2]
+    set vari [expr $opt(grid_length) / 2.0]
+    set right [expr $g_x + $vari]
+    set left [expr $g_x - $vari]
+    set top [expr $g_y + $vari]
+    set bottom [expr $g_y - $vari]
+    if {$t_x >= $left && $t_x <= $right && $t_y >= $bottom && $t_y <= $top} {
+        return 1
+    } else {
+        return 0
+    }
+}
+
+# If the target is in Monitoring Region
+proc in_region {target_ time_stamp} {
+    global opt
+    upvar 1 $target_ target
+    $target update_position
+    if {![llength $opt(grid)]} {
+        return 0
+    }
+    set t_x [$target set X_]
+    set t_y [$target set Y_]
+    set g_x [lindex [lindex $opt(grid) 0] 0]
+    set g_y [lindex [lindex $opt(grid) 0] 1]
+    set vari [expr $opt(grid_length) * 3.0 / 2]
+    set right [expr $g_x + $vari]
+    set left [expr $g_x - $vari]
+    set top [expr $g_y + $vari]
+    set bottom [expr $g_y - $vari]
     if {$t_x >= $left && $t_x <= $right && $t_y >= $bottom && $t_y <= $top} {
         return 1
     } else {
@@ -582,7 +607,9 @@ proc mobile_node_action {time_stamp} {
     #puts "================= At $time_stamp ================="; # test
 
     # Need to set up new subregions
-    if {![llength $opt(grid)] || ![in_subregion target(0) 1 $time_stamp]} {
+    #if {![llength $opt(grid)] || ![in_subregion target(0) 1 $time_stamp]} {}
+    #if {$opt(tracking_index) == -1 || ![in_region target(0) $time_stamp]} {}
+    if {$opt(tracking_index) == -1 || ![in_subregion target(0) 1 $time_stamp]} {
         #puts "Let's MOVE NOW!"; # test
         gridding target(0) $time_stamp
         ## test
@@ -599,10 +626,10 @@ proc mobile_node_action {time_stamp} {
         #}
         ## /test
         dispatching target(0) $time_stamp
-    }
-    #puts "Moving List: $opt(moving_list)"; # test
-    if {![llength $opt(moving_list)]} {
-        return
+        #puts "Moving List: $opt(moving_list)"; # test
+        if {![llength $opt(moving_list)]} {
+            return
+        }
     }
     # Get the closest sensor
     set dist_min [expr 2 * $opt(x)]
@@ -620,6 +647,7 @@ proc mobile_node_action {time_stamp} {
     #set t_y [$target(0) set Y_]
     #destination_xy_dfov mnode($index_min) $t_x $t_y $time_stamp
     #puts "Tracking sensor: $index_min"; # test
+
     # Dispatch the Level 2 sensor for tracking
     #puts "opt(leve2_index): $opt(level2_index)"; # test
     if {$opt(level2_index) != -1 && \
@@ -629,10 +657,22 @@ proc mobile_node_action {time_stamp} {
         set t_y [$target(0) set Y_]
         destination_xy_level2 mnode($opt(level2_index)) $t_x $t_y $time_stamp
     }
-    # Calulate the EMT and Total Movement
+
+    # Update the EMT and Total Movement
     if {$dist_min <= $opt(d_fov)} {
+        set opt(tracking_index) $index_min
         incr opt(effective_monitoring_time) $opt(time_click)
+        #foreach i $opt(moving_list) { ; # Stop other sensors
+        #    if {$i == $index_min} {
+        #        continue
+        #    }
+        #    $mnode($i) update_position
+        #    set x [$mnode($i) set X_]
+        #    set y [$mnode($i) set Y_]
+        #    $mnode($i) setdest $x $y $opt(mnode_speed)
+        #}
     } else {
+        set opt(tracking_index) -1
         #puts "Can't monitor the target"; # test
     }
 }
