@@ -6,7 +6,7 @@ set terminal postscript eps color solid
 set output "100_t_speed_vs_tmd.eps"
 #set terminal qt font "Times New Roman, 20"
 #set xlabel "{/SimSun=20 ¿Õ¶´ÊýÁ¿}"
-set xlabel "Number of Mobile Nodes"
+set xlabel "Target Maximum Velocity"
 set xrange [1:6]
 set xtics 1
 set mxtics 1
