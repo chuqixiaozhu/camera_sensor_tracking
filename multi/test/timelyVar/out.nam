@@ -1,0 +1,10 @@
+n -t * -s 0  -x 17.076016737649226 -y 10.541907106778542 -Z 0 -z 1  -v circle -c black
+n -t * -s 1  -x 16.054540377135638 -y 3.5445650869722316 -Z 0 -z 1  -v circle -c black
+n -t * -s 2  -x 17.265229805961823 -y 13.0308395917671 -Z 0 -z 1  -v circle -c black
+n -t * -s 3  -x 14.137229423102564 -y 29.035661732328897 -Z 0 -z 1  -v circle -c black
+n -t * -s 4  -x 21.828574669467553 -y 19.617751035661321 -Z 0 -z 1  -v circle -c black
+n -t * -s 5  -x 15 -y 15 -Z 0 -z 2  -v circle -c black
+V -t * -v 1.0a5 -a 0
+W -t * -x 30 -y 30
+A -t * -n 1 -p 0 -o 0x7fffffff -c 30 -a 1
+A -t * -h 1 -m 1073741823 -s 0

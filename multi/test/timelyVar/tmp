@@ -1,0 +1,26 @@
+At start: opt(var) = 0
+At end: opt(var) = 0
+At 0: opt(var) = 0
+At 0: opt(var) = 1
+At 1: opt(var) = 1
+At 1: opt(var) = 2
+At 2: opt(var) = 2
+At 2: opt(var) = 3
+At 3: opt(var) = 3
+At 3: opt(var) = 4
+At 4: opt(var) = 4
+At 4: opt(var) = 5
+At 5: opt(var) = 5
+At 5: opt(var) = 6
+At 6: opt(var) = 6
+At 6: opt(var) = 7
+At 7: opt(var) = 7
+At 7: opt(var) = 8
+At 8: opt(var) = 8
+At 8: opt(var) = 9
+At 9: opt(var) = 9
+At 9: opt(var) = 10
+At 10: opt(var) = 10
+num_nodes is set 6
+channel.cc:sendUp - Calc highestAntennaZ_ and distCST_
+highestAntennaZ_ = 1.5,  distCST_ = 550.0
