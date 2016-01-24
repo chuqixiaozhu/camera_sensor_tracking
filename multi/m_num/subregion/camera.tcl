@@ -46,6 +46,7 @@ set opt(ntarget) 3;                         # number of targets
 set opt(total_moving_distance) 0; # Total moving distance of mobile nodes
 set opt(precision) 0.0000001;   # Precision for position adjustment
 set opt(nine) 9;                # Number of subregions in a monitoring region
+set opt(AVG_EMT) 0;             # Average Effective Monitoring Time
 
 source $opt(normal)
 if {0 < $argc} {
@@ -308,7 +309,7 @@ proc distance_xy {sx sy tx ty} {
 
 # If the target or sensor is in Level 1 or 2 subregion
 proc in_subregion {target_ k level time_stamp} {
-    global opt
+    global opt subregions
     upvar 1 $target_ target
     $target update_position
 
@@ -561,9 +562,8 @@ proc get_all_metrics {metrics_ time_stamp} {
 }
 
 # Dispatch mobile sensors for tarcking
-#proc dispatching {target_ time_stamp} {}
 proc dispatching {time_stamp} {
-    global opt mnode moving_sensors subregions level2_index
+    global opt mnodes moving_sensors subregions level2_index
     # Stop moving sensors
     for {set k 0} {$k < $opt(ntarget)} {incr k} {
         foreach index $moving_sensors($k) {
@@ -582,11 +582,11 @@ proc dispatching {time_stamp} {
 
     # Get all metrics
     set metrics {}
-    get_all_metrics metrics $time_stamp;  # Need a Test now.
+    get_all_metrics metrics $time_stamp
 
     # Flags for nodes
     for {set m 0} {$m < $opt(nmnode)} {incr m} {
-        set node_flag 0
+        set node_flag($m) 0
     }
     # Flags for subregions of all targets
     for {set k 0} {$k < $opt(ntarget)} {incr k} {
@@ -601,28 +601,39 @@ proc dispatching {time_stamp} {
         set m [lindex $ele 0];  # Index of Node
         set k [lindex $ele 1];  # Index of Target
         set z [lindex $ele 2];  # Index of Subregion
+        #puts "{m, k, z}: {$m, $k, $z}"; # test
         if {$node_flag($m) || [lindex $sr_flag($k) $z]} {
             continue
         }
+        set node_flag($m) 1
+        set sr_flag($k) [lreplace $sr_flag($k) $z $z 1]
 
-        # Todo 20160123-23:11
         # Dispatch Sensor m to Subregion z of Target k
+        set dest_x [lindex [lindex $subregions($k) $z] 0]
+        set dest_y [lindex [lindex $subregions($k) $z] 1]
+        #puts "dest: ($dest_x, $dest_y), m = $m"; # test
+        #puts "Dispatch: {m$m, k$k, z$z}"; # test
+        $mnodes($m) setdest $dest_x $dest_y $opt(mnode_speed)
         # Add Sensor m to moving_sensors($k)
-        # if z==1 then set level2_index($k) m
+        lappend moving_sensors($k) $m
+        # If it is Level-2 node
+        if {$z == 1} {
+            set level2_index($k) $m
+        }
     }
 }
 
 # Scheduling mobile node actions
 proc mobile_node_action {time_stamp} {
-    global opt mnodes targets moving_sensors tracking_index level2_index
-    puts "================= At $time_stamp ================="; # test
+    global opt mnodes targets moving_sensors tracking_index level2_index EMT
+    #puts "================= At $time_stamp ================="; # test
     # Need to set up new subregions
     set dispatch_flag 0;        # If need re-dispatch nodes to targets
     for {set k 0} {$k < $opt(ntarget)} {incr k} {
         if {$tracking_index($k) == -1 \
                 || ![in_subregion targets($k) $k 1 $time_stamp]} {
             #puts "Let's MOVE NOW!"; # test
-            puts "Target $k needs grid."; # test
+            #puts "Target $k needs grid."; # test
             gridding $k $time_stamp
             set dispatch_flag 1
         }
@@ -634,63 +645,46 @@ proc mobile_node_action {time_stamp} {
         #}
     }
 
-    # Todo 20160123-23:11
-    # Dispatch the Level 2 node of all targets
-    # Dispatch the closest node of every target for tracking
-    # Update the EMT of all targets
-
-    #===============================================
-    # Old codes.
-    # Need a For Loop for all targets
-    #===============================================
-    ## Get the closest sensor
-    #set dist_min [expr 2 * $opt(x)]
-    #set index_min -1
-    #foreach index $opt(moving_list) {
-    #    set dist [distance mnodes($index) targets(0) $time_stamp]
-    #    if {$dist < $dist_min} {
-    #        set dist_min $dist
-    #        set index_min $index
-    #    }
-    #}
-
-    ## Dispatch the Level 2 sensor for tracking
-    #if {$opt(level2_index) != -1 && \
-    #    [in_subregion mnodes($opt(level2_index)) 2 $time_stamp]} {
-    #    $targets(0) update_position
-    #    set t_x [$targets(0) set X_]
-    #    set t_y [$targets(0) set Y_]
-    #    destination_xy_level2 mnodes($opt(level2_index)) $t_x $t_y $time_stamp
-    #}
-
-    ## Dispatch the sensor for tracking
-    #$targets(0) update_position
-    #set t_x [$targets(0) set X_]
-    #set t_y [$targets(0) set Y_]
-    #destination_xy_dfov mnodes($index_min) $t_x $t_y $time_stamp
-    ##puts "Tracking sensor: $index_min"; # test
-
-
-    ## Update the EMT and Total Movement
-    #if {$dist_min <= $opt(d_fov)} {
-    #    set opt(tracking_index) $index_min
-    #    incr opt(effective_monitoring_time) $opt(time_click)
-    #    foreach i $opt(moving_list) { ; # Stop other sensors
-    #        if {$i == $index_min} {
-    #            continue
-    #        }
-    #        $mnodes($i) update_position
-    #        set x [$mnodes($i) set X_]
-    #        set y [$mnodes($i) set Y_]
-    #        $mnodes($i) setdest $x $y $opt(mnode_speed)
-    #    }
-    #} else {
-    #    set opt(tracking_index) -1
-    #    #puts "Can't monitor the target"; # test
-    #}
-    #===============================================
-    # /Old codes.
-    #===============================================
+    for {set k 0} {$k < $opt(ntarget)} {incr k} {
+        $targets($k) update_position
+        set tx [$targets($k) set X_]
+        set ty [$targets($k) set Y_]
+        # Dispatch the Level 2 node of all targets
+        if {$level2_index($k) != -1 \
+            && [in_subregion mnodes($level2_index($k)) $k 2 $time_stamp]} {
+            destination_xy_level2 \
+                mnodes($level2_index($k)) $k $tx $ty $time_stamp
+        }
+        # Dispatch the closest node of every target for tracking
+        set dist_min [expr 2.0 * $opt(x)]
+        set index_min -1
+        foreach index $moving_sensors($k) {
+            set dist [distance mnodes($index) targets($k) $time_stamp]
+            if {$dist < $dist_min} {
+                set dist_min $dist
+                set index_min $index
+            }
+        }
+        if {$index_min != -1} {
+            destination_xy_dfov mnodes($index_min) $tx $ty $time_stamp
+        }
+        # Update the EMT of all targets
+        if {$dist_min <= $opt(d_fov)} {
+            set tracking_index($k) $index_min
+            incr EMT($k) $opt(time_click)
+            foreach ele $moving_sensors($k) {
+                if {$ele == $index_min} {
+                    continue
+                }
+                $mnodes($ele) update_position
+                set x [$mnodes($ele) set X_]
+                set y [$mnodes($ele) set Y_]
+                $mnodes($ele) setdest $x $y $opt(mnode_speed)
+            }
+        } else {
+            set tracking_index($k) -1
+        }
+    }
 }
 
 #===================================
@@ -803,19 +797,20 @@ while {$time_line <= $opt(stop)} {
 #===================================
 
 # Calculate Averaget Effective Monitoring Time of targets
-#proc average_emt {} {
-#    global EMT opt
-#    set sum 0
-#    for {set i 0} {$i < $opt(ntarget)} {incr i} {
-#        incr sum $EMT($i)
-#    }
-#    set opt(AVG_EMT) [expr 1.0 * $sum / $opt(ntarget)]
-#}
+proc average_emt {} {
+    global EMT opt
+    set sum 0
+    for {set i 0} {$i < $opt(ntarget)} {incr i} {
+        incr sum $EMT($i)
+        #puts "EMT($i): $EMT($i)"; # test
+    }
+    set opt(AVG_EMT) [expr 1.0 * $sum / $opt(ntarget)]
+}
 
 # Calculate the results
-#proc getting_results {} {
-#    #average_emt
-#}
+proc getting_results {} {
+    average_emt
+}
 
 # Define a 'finish' procedure
 proc output_file {} {
@@ -823,16 +818,17 @@ proc output_file {} {
     set result_file [open $opt(result_file) a]
     puts $result_file \
          "$opt(nmnode) \
-          $opt(effective_monitoring_time) \
+          $opt(AVG_EMT) \
           $opt(total_moving_distance)"
     flush $result_file
     close $result_file
 }
 proc finish {} {
     global ns tracefile namfile opt argc
-    #getting_results
+    getting_results
     #puts "Effective Monitoring Time: $opt(effective_monitoring_time)"
-    #puts "Total Moving Distance: $opt(total_moving_distance)"
+    puts "Average Effective Monitoring Time: $opt(AVG_EMT)"
+    puts "Total Moving Distance: $opt(total_moving_distance)"
     $ns flush-trace
     if {0 < $argc} {
         output_file

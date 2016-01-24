@@ -1,4 +1,4 @@
-#! /usr/local/bin/python3
+#! /usr/bin/python3
 import datetime
 import subprocess
 import sys
@@ -38,7 +38,7 @@ for line in rf:
 vars = sorted(emt.keys())
 for var in vars:
     #print('{0} {1} {2}'.format(var, emt[var]/count, tmd[var]/count))
-    emt_file.write('{0} {1:.1f}\n'.format(var, emt[var] / count))
+    emt_file.write('{0} {1:.3f}\n'.format(var, emt[var] / count))
     tmd_file.write('{0} {1:.3f}\n'.format(var, tmd[var] / count))
 emt_file.close()
 tmd_file.close()
