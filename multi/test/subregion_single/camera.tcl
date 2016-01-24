@@ -25,18 +25,18 @@ set opt(nam_file) "out.nam"
 set opt(x)      100                        ;# X dimension of topography
 set opt(y)      100                        ;# Y dimension of topography
 set opt(stop)   100                        ;# time of simulation end
-set opt(nmnode) 10                         ;# number of mobile nodes
+set opt(nmnode) 20                         ;# number of mobile nodes
 set opt(node_size) 1                       ;# Size of nodes
 set opt(target_size) 2                     ;# Size of the target
 set opt(d_fov) 10;                         # Length of Field of View
 set opt(mnode_speed) 1;                    # Velocity of Mobile nodes
-set opt(target_speed_max) 3;               # Maximum velocity of the Target
+set opt(target_speed_max) 1;               # Maximum velocity of the Target
 set opt(target_speed_min) 0.7;             # Minimum velocity of the Target
 set opt(time_click) 1;                     # Duration of a time slice
 set opt(grid_length) [expr sqrt(2) * $opt(d_fov)]; # Length of a subregion
 set opt(dist_limit) [expr 3 * sqrt(2) * $opt(d_fov)]; \
     # Maximum distance from target to chosen camera nodes
-set opt(ntarget) 3;                         # number of targets
+set opt(ntarget) 1;                         # number of targets
 #set opt(target_theta) {};                    # Direction of target
 #set opt(grid) {};               # Coodinates List of Subregions
 #set opt(moving_list) {};        # List of moving sensors
@@ -613,7 +613,8 @@ proc dispatching {time_stamp} {
         set dest_x [lindex [lindex $subregions($k) $z] 0]
         set dest_y [lindex [lindex $subregions($k) $z] 1]
         #puts "dest: ($dest_x, $dest_y), m = $m"; # test
-        #puts "Dispatch: {m$m, k$k, z$z}"; # test
+        puts "Dispatch: {m$m, k$k, z$z}"; # test
+        puts "Node $m to dest ($dest_x, $dest_y) "; # test
         $mnodes($m) setdest $dest_x $dest_y $opt(mnode_speed)
         # Add Sensor m to moving_sensors($k)
         lappend moving_sensors($k) $m
@@ -627,7 +628,7 @@ proc dispatching {time_stamp} {
 # Scheduling mobile node actions
 proc mobile_node_action {time_stamp} {
     global opt mnodes targets moving_sensors tracking_index level2_index EMT
-    #puts "================= At $time_stamp ================="; # test
+    puts "================= At $time_stamp ================="; # test
     # Need to set up new subregions
     set dispatch_flag 0;        # If need re-dispatch nodes to targets
     for {set k 0} {$k < $opt(ntarget)} {incr k} {
@@ -674,15 +675,15 @@ proc mobile_node_action {time_stamp} {
         if {$dist_min <= $opt(d_fov)} {
             set tracking_index($k) $index_min
             incr EMT($k) $opt(time_click)
-            foreach ele $moving_sensors($k) {
-                if {$ele == $index_min} {
-                    continue
-                }
-                $mnodes($ele) update_position
-                set x [$mnodes($ele) set X_]
-                set y [$mnodes($ele) set Y_]
-                $mnodes($ele) setdest $x $y $opt(mnode_speed)
-            }
+            #foreach ele $moving_sensors($k) {
+            #    if {$ele == $index_min} {
+            #        continue
+            #    }
+            #    $mnodes($ele) update_position
+            #    set x [$mnodes($ele) set X_]
+            #    set y [$mnodes($ele) set Y_]
+            #    $mnodes($ele) setdest $x $y $opt(mnode_speed)
+            #}
         } else {
             set tracking_index($k) -1
         }

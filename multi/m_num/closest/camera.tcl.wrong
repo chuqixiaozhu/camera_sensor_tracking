@@ -45,7 +45,7 @@ set opt(ntarget) 3;                         # number of targets
 #set opt(effective_monitoring_time) 0; # Effective Monitoring Time
 set opt(total_moving_distance) 0; # Total moving distance of mobile nodes
 set opt(precision) 0.0000001;   # Precision for position adjustment
-set opt(nine) 9;                # Number of subregions in a monitoring region
+#set opt(nine) 9;                # Number of subregions in a monitoring region
 set opt(AVG_EMT) 0;             # Average Effective Monitoring Time
 
 source $opt(normal)
@@ -181,12 +181,8 @@ for {set i 0} {$i < $opt(ntarget)} {incr i} {
     $targets($i) color "black"
     $targets($i) shape "hexagon"
     $ns at 0 "$targets($i) color \"red\""
-    set thetas($i) {};         # Moving directions of target i
-    set subregions($i) {}; # Subregions List of target i
-    set moving_sensors($i) {};    # List of Moving Sensors to target i
-    set candidates($i) {};        # List of Candidate-sensor for target i
+    set moving_sensors($i) {}; # Moving nodes to target i
     set tracking_index($i) -1; # Index of Tracking Sensor for target i
-    set level2_index($i) -1;    # Index of Level 2 sensor for target i
     set EMT($i) 0
 }
 
@@ -307,261 +303,6 @@ proc distance_xy {sx sy tx ty} {
     return $dist
 }
 
-# If the target or sensor is in Level 1 or 2 subregion
-proc in_subregion {target_ k level time_stamp} {
-    global opt subregions
-    upvar 1 $target_ target
-    $target update_position
-
-    #if {![llength $opt(grid)]} {}
-    if {![llength $subregions($k)]} {
-        return 0
-    }
-    incr level -1
-    set t_x [$target set X_]
-    set t_y [$target set Y_]
-    #set g_x [lindex [lindex $opt(grid) $level] 0]
-    #set g_y [lindex [lindex $opt(grid) $level] 1]
-    set g_x [lindex [lindex $subregions($k) $level] 0]
-    set g_y [lindex [lindex $subregions($k) $level] 1]
-    set vari [expr $opt(grid_length) / 2.0]
-    set right [expr $g_x + $vari]
-    set left [expr $g_x - $vari]
-    set top [expr $g_y + $vari]
-    set bottom [expr $g_y - $vari]
-    if {$t_x >= $left && $t_x <= $right && $t_y >= $bottom && $t_y <= $top} {
-        return 1
-    } else {
-        return 0
-    }
-}
-
-## If the target is in Monitoring Region
-#proc in_region {target_ time_stamp} {
-#    global opt
-#    upvar 1 $target_ target
-#    $target update_position
-#    if {![llength $opt(grid)]} {
-#        return 0
-#    }
-#    set t_x [$target set X_]
-#    set t_y [$target set Y_]
-#    set g_x [lindex [lindex $opt(grid) 0] 0]
-#    set g_y [lindex [lindex $opt(grid) 0] 1]
-#    set vari [expr $opt(grid_length) * 3.0 / 2]
-#    set right [expr $g_x + $vari]
-#    set left [expr $g_x - $vari]
-#    set top [expr $g_y + $vari]
-#    set bottom [expr $g_y - $vari]
-#    if {$t_x >= $left && $t_x <= $right && $t_y >= $bottom && $t_y <= $top} {
-#        return 1
-#    } else {
-#        return 0
-#    }
-#}
-
-# Build up the Monitoring Field for the target
-#proc gridding {target_ time_stamp} {}
-proc gridding {k time_stamp} {
-    global opt subregions targets thetas mnodes candidates
-    #upvar 1 $target_ target
-    set target $targets($k)
-    $target update_position
-
-    # Get candidate set S for Target k
-    set candidates($k) {};
-    $targets($k) update_position
-    set tx [$targets($k) set X_]
-    set ty [$targets($k) set Y_]
-    for {set m 0} {$m < $opt(nmnode)} {incr m} {
-        set sx [$mnodes($m) set X_]
-        set sy [$mnodes($m) set Y_]
-        set dist [distance_xy $sx $sy $tx $ty]
-        if {$dist <= $opt(dist_limit)} {
-            lappend candidates($k) $m
-        }
-    }
-
-    # Set subregions for Target k
-    set subregions($k) {}
-    set theta [lindex $thetas($k) $time_stamp]
-    set pi2eight [expr $opt(Pi) / 8]
-    set target_x [$target set X_]
-    set target_y [$target set Y_]
-    lappend subregions($k) [list $target_x $target_y]; # Level-1
-    set x1 $target_x
-    set y1 $target_y
-    set x_right [expr $x1 + $opt(grid_length)]
-    set x_left [expr $x1 - $opt(grid_length)]
-    set y_top [expr $y1 + $opt(grid_length)]
-    set y_bottom [expr $y1 - $opt(grid_length)]
-    if {$x_right >= $opt(x)} {
-        set x_right [expr $opt(x) - $opt(precision)]
-    }
-    if {$x_left <= 0} {
-        set x_left $opt(precision)
-    }
-    if {$y_top >= $opt(y)} {
-        set y_top [expr $opt(y) - $opt(precision)]
-    }
-    if {$y_bottom <= 0} {
-        set y_bottom $opt(precision)
-    }
-
-    set sub(top_right) [list $x_right $y_top]; # Top Right
-    set sub(top) [list $x1 $y_top]; # Top
-    set sub(right) [list $x_right $y1]; # Right
-    set sub(top_left) [list $x_left $y_top]; # Top Left
-    set sub(bottom_right) [list $x_right $y_bottom]; # Bottom Right
-    set sub(left) [list $x_left $y1]; # Left
-    set sub(bottom) [list $x1 $y_bottom]; # Bottom
-    set sub(bottom_left) [list $x_left $y_bottom]; # Bottom Left
-
-    if {$theta >= -$pi2eight && $theta < $pi2eight } {
-        lappend subregions($k) $sub(right); # Level-2
-        lappend subregions($k) $sub(top_right); # Level-3
-        lappend subregions($k) $sub(bottom_right); # Level-3
-        lappend subregions($k) $sub(top); # Level-4
-        lappend subregions($k) $sub(bottom); # Level-4
-        lappend subregions($k) $sub(top_left); # Level-5
-        lappend subregions($k) $sub(bottom_left); # Level-5
-        lappend subregions($k) $sub(left); # Level-6
-    } elseif {$theta >= $pi2eight && $theta < 3*$pi2eight} {
-        lappend subregions($k) $sub(top_right); # Level-2
-        lappend subregions($k) $sub(top); # Level-3
-        lappend subregions($k) $sub(right); # Level-3
-        lappend subregions($k) $sub(top_left); # Level-4
-        lappend subregions($k) $sub(bottom_right); # Level-4
-        lappend subregions($k) $sub(left); # Level-5
-        lappend subregions($k) $sub(bottom); # Level-5
-        lappend subregions($k) $sub(bottom_left); # Level-6
-    } elseif {$theta >= 3*$pi2eight && $theta < 5*$pi2eight} {
-        lappend subregions($k) $sub(top); # Level-2
-        lappend subregions($k) $sub(top_left); # Level-3
-        lappend subregions($k) $sub(top_right); # Level-3
-        lappend subregions($k) $sub(left); # Level-4
-        lappend subregions($k) $sub(right); # Level-4
-        lappend subregions($k) $sub(bottom_left); # Level-5
-        lappend subregions($k) $sub(bottom_right); # Level-5
-        lappend subregions($k) $sub(bottom); # Level-6
-    } elseif {$theta >= 5*$pi2eight && $theta < 7*$pi2eight} {
-        lappend subregions($k) $sub(top_left); # Level-2
-        lappend subregions($k) $sub(left); # Level-3
-        lappend subregions($k) $sub(top); # Level-3
-        lappend subregions($k) $sub(bottom_left); # Level-4
-        lappend subregions($k) $sub(top_right); # Level-4
-        lappend subregions($k) $sub(bottom); # Level-5
-        lappend subregions($k) $sub(right); # Level-5
-        lappend subregions($k) $sub(bottom_right); # Level-6
-    } elseif {$theta >= 7*$pi2eight || $theta < -7*$pi2eight} {
-        lappend subregions($k) $sub(left); # Level-2
-        lappend subregions($k) $sub(bottom_left); # Level-3
-        lappend subregions($k) $sub(top_left); # Level-3
-        lappend subregions($k) $sub(bottom); # Level-4
-        lappend subregions($k) $sub(top); # Level-4
-        lappend subregions($k) $sub(bottom_right); # Level-5
-        lappend subregions($k) $sub(top_right); # Level-5
-        lappend subregions($k) $sub(right); # Level-6
-    } elseif {$theta >= -7*$pi2eight && $theta < -5*$pi2eight} {
-        lappend subregions($k) $sub(bottom_left); # Level-2
-        lappend subregions($k) $sub(bottom); # Level-3
-        lappend subregions($k) $sub(left); # Level-3
-        lappend subregions($k) $sub(bottom_right); # Level-4
-        lappend subregions($k) $sub(top_left); # Level-4
-        lappend subregions($k) $sub(right); # Level-5
-        lappend subregions($k) $sub(top); # Level-5
-        lappend subregions($k) $sub(top_right); # Level-6
-    } elseif {$theta >= -5*$pi2eight && $theta < -3*$pi2eight} {
-        lappend subregions($k) $sub(bottom); # Level-2
-        lappend subregions($k) $sub(bottom_right); # Level-3
-        lappend subregions($k) $sub(bottom_left); # Level-3
-        lappend subregions($k) $sub(right); # Level-4
-        lappend subregions($k) $sub(left); # Level-4
-        lappend subregions($k) $sub(top_right); # Level-5
-        lappend subregions($k) $sub(top_left); # Level-5
-        lappend subregions($k) $sub(top); # Level-6
-    } elseif {$theta >= -3*$pi2eight && $theta < -$pi2eight} {
-        lappend subregions($k) $sub(bottom_right); # Level-2
-        lappend subregions($k) $sub(right); # Level-3
-        lappend subregions($k) $sub(bottom); # Level-3
-        lappend subregions($k) $sub(top_right); # Level-4
-        lappend subregions($k) $sub(bottom_left); # Level-4
-        lappend subregions($k) $sub(top); # Level-5
-        lappend subregions($k) $sub(left); # Level-5
-        lappend subregions($k) $sub(top_left); # Level-6
-    }
-}
-
-# Return its Level number for the index in the subregion list
-proc index2level {index} {
-    switch -exact -- $index {
-        0 {return 1}
-        1 {return 2}
-        2 -
-        3 {return 3}
-        4 -
-        5 {return 4}
-        6 -
-        7 {return 5}
-        8 {return 6}
-        default {return "Error"}
-    }
-}
-
-# Return corresponding metric value for the node and the subregion
-proc get_metric {mx my sx sy level} {
-    global opt
-    set dist [distance_xy $mx $my $sx $sy]
-    set result [expr $dist / $opt(x) * $level]
-    return $result
-}
-
-# Calculate the metric set W for all sensors with all subregions
-# An candidate should be a list of {m, k, z, metric}
-proc get_all_metrics {metrics_ time_stamp} {
-    global opt mnodes subregions candidates
-    upvar 1 $metrics_ metrics
-    set metrics {}
-    # Get all candidates (maybe not all sensors)
-    for {set m 0} {$m < $opt(nmnode)} {incr m} {
-        set is_candidate($m) 0; # flag
-    }
-    for {set k 0} {$k < $opt(ntarget)} {incr k} {
-        foreach ele $candidates($k) {
-            set is_candidate($ele) 1; # record all candidates with 1
-        }
-    }
-
-    # Calculate all metrics
-    for {set m 0} {$m < $opt(nmnode)} {incr m} {
-        if {!$is_candidate($m)} {
-            continue
-        }
-        $mnodes($m) update_position
-        set mx [$mnodes($m) set X_]; # coordinates of mobile node
-        set my [$mnodes($m) set Y_]
-        for {set k 0} {$k < $opt(ntarget)} {incr k} {
-            set size [llength $subregions($k)]
-            for {set z 0} {$z < $size} {incr z} {
-                # coordinates of subregion
-                set sx [lindex [lindex $subregions($k) $z] 0]
-                set sy [lindex [lindex $subregions($k) $z] 1]
-                set level [index2level $z]
-                set metric [get_metric $mx $my $sx $sy $level]
-                # Insert metric orderly
-                set length [llength $metrics]
-                for {set i 0} {$i < $length} {incr i} {
-                    set tmp_m [lindex [lindex $metrics $i] 3]
-                    if {$tmp_m > $metric} {
-                        break
-                    }
-                }
-                set metrics [linsert $metrics $i [list $m $k $z $metric]]
-            }
-        }
-    }
-}
-
 # Dispatch mobile sensors for tarcking
 proc dispatching {time_stamp} {
     global opt mnodes moving_sensors subregions level2_index
@@ -626,9 +367,55 @@ proc dispatching {time_stamp} {
 
 # Scheduling mobile node actions
 proc mobile_node_action {time_stamp} {
-    global opt mnodes targets moving_sensors tracking_index level2_index EMT
+    global opt mnodes targets tracking_index EMT moving_sensors
     #puts "================= At $time_stamp ================="; # test
+    # Reset moving sensors for every target
+    for {set k 0} {$k < $opt(ntarget)} {incr k} {
+        set moving_sensors($k) {}
+    }
+    # For every node, choose its closest target
+    for {set m 0} {$m < $opt(nmnode)} {incr m} {
+        $mnodes($m) update_position
+        set mx [$mnodes($m) set X_]
+        set my [$mnodes($m) set Y_]
+        set dist_min [expr 2.0 * $opt(x)]
+        set index_min -1
+        set dest_x -1
+        set dest_y -1
+        for {set k 0} {$k < $opt(ntarget)} {incr k} {
+            #if {$tracking_index($k) != -1} {
+            #    continue
+            #}
+            $targets($k) update_position
+            set tx [$targets($k) set X_]
+            set ty [$targets($k) set Y_]
+            set dist [distance_xy $mx $my $tx $ty]
+            if {$dist <= $opt(dist_limit) && $dist < $dist_min} {
+                set dist $dist_min
+                set index_min $k
+                set dest_x $tx
+                set dest_y $ty
+            }
+        }
+        # If node m got a closest target
+        if {index_min != -1} {
+            $mnodes($m) setdest $dest_x $dest_y $opt(mnode_speed)
+            lappend moving_sensors($index_min) $m
+        }
+    }
+    # Update EMT of target index_min
+    for {set k 0} {$k < $opt(ntarget)} {incr k} {
+        set tx [$targets($k) set X_]
+        set ty [$targets($k) set Y_]
+        set dist [distance_xy $mx $my $tx $ty]
+        foreach
+    }
+
+
+
     # Need to set up new subregions
+
+
     set dispatch_flag 0;        # If need re-dispatch nodes to targets
     for {set k 0} {$k < $opt(ntarget)} {incr k} {
         if {$tracking_index($k) == -1 \
@@ -646,6 +433,7 @@ proc mobile_node_action {time_stamp} {
         #}
     }
 
+    # For every target, schedule some nodes for tracking
     for {set k 0} {$k < $opt(ntarget)} {incr k} {
         $targets($k) update_position
         set tx [$targets($k) set X_]
@@ -667,8 +455,7 @@ proc mobile_node_action {time_stamp} {
             }
         }
         if {$index_min != -1} {
-            #destination_xy_dfov mnodes($index_min) $tx $ty $time_stamp
-            $mnodes($index_min) setdest $tx $ty $opt(mnode_speed)
+            destination_xy_dfov mnodes($index_min) $tx $ty $time_stamp
         }
         # Update the EMT of all targets
         if {$dist_min <= $opt(d_fov)} {

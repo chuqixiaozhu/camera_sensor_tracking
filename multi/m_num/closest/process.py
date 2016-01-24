@@ -21,8 +21,8 @@ for i in range(count):
 
 # Process the results
 rf = open(result_file, 'r')
-emt_file = open('m_num-subregion_vs_emt', 'w')
-tmd_file = open('m_num-subregion_vs_tmd', 'w')
+emt_file = open('m_num-closest_vs_emt', 'w')
+tmd_file = open('m_num-closest_vs_tmd', 'w')
 emt = dict()
 tmd = dict()
 for line in rf:
