@@ -667,8 +667,8 @@ proc mobile_node_action {time_stamp} {
             }
         }
         if {$index_min != -1} {
-            #destination_xy_dfov mnodes($index_min) $tx $ty $time_stamp
-            $mnodes($index_min) setdest $tx $ty $opt(mnode_speed)
+            destination_xy_dfov mnodes($index_min) $tx $ty $time_stamp
+            #$mnodes($index_min) setdest $tx $ty $opt(mnode_speed)
         }
         # Update the EMT of all targets
         if {$dist_min <= $opt(d_fov)} {

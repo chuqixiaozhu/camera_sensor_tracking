@@ -36,7 +36,7 @@ set opt(time_click) 1;                     # Duration of a time slice
 set opt(grid_length) [expr sqrt(2) * $opt(d_fov)]; # Length of a subregion
 set opt(dist_limit) [expr 3 * sqrt(2) * $opt(d_fov)]; \
     # Maximum distance from target to chosen camera nodes
-set opt(ntarget) 1;                         # number of targets
+set opt(ntarget) 2;                         # number of targets
 #set opt(target_theta) {};                    # Direction of target
 #set opt(grid) {};               # Coodinates List of Subregions
 #set opt(moving_list) {};        # List of moving sensors
@@ -613,8 +613,7 @@ proc dispatching {time_stamp} {
         set dest_x [lindex [lindex $subregions($k) $z] 0]
         set dest_y [lindex [lindex $subregions($k) $z] 1]
         #puts "dest: ($dest_x, $dest_y), m = $m"; # test
-        puts "Dispatch: {m$m, k$k, z$z}"; # test
-        puts "Node $m to dest ($dest_x, $dest_y) "; # test
+        #puts "Dispatch: {m$m, k$k, z$z}"; # test
         $mnodes($m) setdest $dest_x $dest_y $opt(mnode_speed)
         # Add Sensor m to moving_sensors($k)
         lappend moving_sensors($k) $m
@@ -628,7 +627,7 @@ proc dispatching {time_stamp} {
 # Scheduling mobile node actions
 proc mobile_node_action {time_stamp} {
     global opt mnodes targets moving_sensors tracking_index level2_index EMT
-    puts "================= At $time_stamp ================="; # test
+    #puts "================= At $time_stamp ================="; # test
     # Need to set up new subregions
     set dispatch_flag 0;        # If need re-dispatch nodes to targets
     for {set k 0} {$k < $opt(ntarget)} {incr k} {
@@ -668,8 +667,8 @@ proc mobile_node_action {time_stamp} {
             }
         }
         if {$index_min != -1} {
-            #destination_xy_dfov mnodes($index_min) $tx $ty $time_stamp
-            $mnodes($index_min) setdest $tx $ty $opt(mnode_speed)
+            destination_xy_dfov mnodes($index_min) $tx $ty $time_stamp
+            #$mnodes($index_min) setdest $tx $ty $opt(mnode_speed)
         }
         # Update the EMT of all targets
         if {$dist_min <= $opt(d_fov)} {
