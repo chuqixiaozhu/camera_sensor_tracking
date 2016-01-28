@@ -25,7 +25,7 @@ set opt(nam_file) "out.nam"
 set opt(x)      100                        ;# X dimension of topography
 set opt(y)      100                        ;# Y dimension of topography
 set opt(stop)   100                        ;# time of simulation end
-set opt(nmnode) 50                         ;# number of mobile nodes
+set opt(nmnode) 30                         ;# number of mobile nodes
 set opt(node_size) 1                       ;# Size of nodes
 set opt(target_size) 2                     ;# Size of the target
 set opt(d_fov) 10;                         # Length of Field of View
