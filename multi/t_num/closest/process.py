@@ -16,7 +16,7 @@ if len(argvs) <= 1:
 else:
     count = int(argvs[1])
 for i in range(count):
-    for target_num in range(1, 7):
+    for target_num in range(2, 11):
         subprocess.call(['ns', 'camera.tcl', str(target_num), result_file])
 
 # Process the results

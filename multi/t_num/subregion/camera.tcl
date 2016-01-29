@@ -25,7 +25,7 @@ set opt(nam_file) "out.nam"
 set opt(x)      100                        ;# X dimension of topography
 set opt(y)      100                        ;# Y dimension of topography
 set opt(stop)   100                        ;# time of simulation end
-set opt(nmnode) 10                         ;# number of mobile nodes
+set opt(nmnode) 30                         ;# number of mobile nodes
 set opt(node_size) 1                       ;# Size of nodes
 set opt(target_size) 2                     ;# Size of the target
 set opt(d_fov) 10;                         # Length of Field of View
@@ -47,11 +47,13 @@ set opt(total_moving_distance) 0; # Total moving distance of mobile nodes
 set opt(precision) 0.0000001;   # Precision for position adjustment
 set opt(nine) 9;                # Number of subregions in a monitoring region
 set opt(AVG_EMT) 0;             # Average Effective Monitoring Time
+set opt(alpha_metric) 1.2;      # Coefficient of levels for metric computation
+
 
 source $opt(normal)
 if {0 < $argc} {
-    set opt(ntarget) [lindex $argv 0]
     #set opt(nfnode) [lindex $argv 0]
+    set opt(ntarget) [lindex $argv 0]
     #set opt(nmnode) [lindex $argv 0]
     #set opt(hole_number) [lindex $argv 0]
     #set opt(target_speed_max) [lindex $argv 0]
@@ -513,14 +515,15 @@ proc index2level {index} {
 proc get_metric {mx my sx sy level} {
     global opt
     set dist [distance_xy $mx $my $sx $sy]
-    set result [expr $dist / $opt(x) * $level]
+    set tl [expr 1 + $opt(alpha_metric) * ($level - 1)]
+    set result [expr $dist * $tl]
     return $result
 }
 
 # Calculate the metric set W for all sensors with all subregions
 # An candidate should be a list of {m, k, z, metric}
 proc get_all_metrics {metrics_ time_stamp} {
-    global opt mnodes subregions candidates
+    global opt mnodes subregions candidates targets
     upvar 1 $metrics_ metrics
     set metrics {}
     # Get all candidates (maybe not all sensors)
@@ -543,12 +546,15 @@ proc get_all_metrics {metrics_ time_stamp} {
         set my [$mnodes($m) set Y_]
         for {set k 0} {$k < $opt(ntarget)} {incr k} {
             set size [llength $subregions($k)]
+            set tx [$targets($k) set X_]
+            set ty [$targets($k) set Y_]
             for {set z 0} {$z < $size} {incr z} {
                 # coordinates of subregion
-                set sx [lindex [lindex $subregions($k) $z] 0]
-                set sy [lindex [lindex $subregions($k) $z] 1]
+                #set sx [lindex [lindex $subregions($k) $z] 0]
+                #set sy [lindex [lindex $subregions($k) $z] 1]
                 set level [index2level $z]
-                set metric [get_metric $mx $my $sx $sy $level]
+                #set metric [get_metric $mx $my $sx $sy $level]
+                set metric [get_metric $mx $my $tx $ty $level]
                 # Insert metric orderly
                 set length [llength $metrics]
                 for {set i 0} {$i < $length} {incr i} {
@@ -660,13 +666,19 @@ proc mobile_node_action {time_stamp} {
         # Dispatch the closest node of every target for tracking
         set dist_min [expr 2.0 * $opt(x)]
         set index_min -1
-        foreach index $moving_sensors($k) {
-            set dist [distance mnodes($index) targets($k) $time_stamp]
-            if {$dist < $dist_min} {
-                set dist_min $dist
-                set index_min $index
-            }
+        # The moving_sensors is in order actually!
+        if {[llength $moving_sensors($k)]} {
+            set index_min [lindex $moving_sensors($k) 0]
+            set dist_min [distance mnodes($index_min) targets($k) $time_stamp]
         }
+
+        #foreach index $moving_sensors($k) {
+        #    set dist [distance mnodes($index) targets($k) $time_stamp]
+        #    if {$dist < $dist_min} {
+        #        set dist_min $dist
+        #        set index_min $index
+        #    }
+        #}
         if {$index_min != -1} {
             destination_xy_dfov mnodes($index_min) $tx $ty $time_stamp
             #$mnodes($index_min) setdest $tx $ty $opt(mnode_speed)

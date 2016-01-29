@@ -16,7 +16,7 @@ if len(argvs) <= 1:
 else:
     count = int(argvs[1])
 for i in range(count):
-    for mnode_num in range(0, 31, 5):
+    for mnode_num in range(10, 51, 5):
         if 0 == mnode_num:
             mnode_num = 1
         subprocess.call(['ns', 'camera.tcl', str(mnode_num), result_file])

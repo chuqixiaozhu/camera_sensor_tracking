@@ -25,7 +25,7 @@ set opt(nam_file) "out.nam"
 set opt(x)      100                        ;# X dimension of topography
 set opt(y)      100                        ;# Y dimension of topography
 set opt(stop)   100                        ;# time of simulation end
-set opt(nmnode) 10                         ;# number of mobile nodes
+set opt(nmnode) 30                         ;# number of mobile nodes
 set opt(node_size) 1                       ;# Size of nodes
 set opt(target_size) 2                     ;# Size of the target
 set opt(d_fov) 10;                         # Length of Field of View
@@ -651,13 +651,19 @@ proc mobile_node_action {time_stamp} {
         # Dispatch the closest node of every target for tracking
         set dist_min [expr 2.0 * $opt(x)]
         set index_min -1
-        foreach index $moving_sensors($k) {
-            set dist [distance mnodes($index) targets($k) $time_stamp]
-            if {$dist < $dist_min} {
-                set dist_min $dist
-                set index_min $index
-            }
+        # The moving_sensors is in order actually!
+        if {[llength $moving_sensors($k)]} {
+            set index_min [lindex $moving_sensors($k) 0]
+            set dist_min [distance mnodes($index_min) targets($k) $time_stamp]
         }
+
+        #foreach index $moving_sensors($k) {
+        #    set dist [distance mnodes($index) targets($k) $time_stamp]
+        #    if {$dist < $dist_min} {
+        #        set dist_min $dist
+        #        set index_min $index
+        #    }
+        #}
         #if {$index_min != -1} {
         #    destination_xy_dfov mnodes($index_min) $tx $ty $time_stamp
         #}
