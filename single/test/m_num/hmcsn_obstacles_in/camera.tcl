@@ -798,7 +798,7 @@ proc mobile_node_action {time_stamp} {
     }
     if {$index_min == -1} {
         return
-    }
+    }; # 11/01/2016
 
     # Dispatch the Level 2 sensor for tracking
     if {$opt(level2_index) != -1 && \
